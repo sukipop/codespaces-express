@@ -1,25 +1,40 @@
-const express = require('express')
-const app = express()
-const port = 3000
+const express = require('express');
+const app = express();
+const port = 3000;
 
-// Use body-parser middleware to handle json body in request
-const bodyParser = require('body-parser');
-app.use(bodyParser.json());
+// Use built-in middleware to handle json body in request
+app.use(express.json());
 
 const checkKey = (req, res, next) => {
-  const key = req.headers['x-api-key']
+  const authHeader = req.headers['authorization'];
 
-  if (key === 'your_secret_key') {
-    next()
-  } else {
-    res.status(403).json({ error: 'Unauthorized' })
+  if (!authHeader) {
+    return res.status(403).json({ error: 'No token provided.' });
   }
-}
 
-app.get('/', checkKey, (req, res) => {
-  res.send('Hello World!')
-})
+  const parts = authHeader.split(' ');
+
+  if (!parts.length === 2) {
+    return res.status(401).json({ error: 'Token error.' });
+  }
+
+  const [ scheme, token ] = parts;
+
+  if (!/^Bearer$/i.test(scheme)) {
+    return res.status(401).json({ error: 'Token malformatted.' });
+  }
+
+  if (token !== process.env.MY_SECRET_KEY) {
+    return res.status(403).json({ error: 'Invalid token.' });
+  }
+
+  next();
+};
+
+app.post('/', checkKey, (req, res) => {
+  res.send('Hello World!');
+});
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+  console.log(`Example app listening on port ${port}`);
+});
